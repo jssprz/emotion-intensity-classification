@@ -1,3 +1,5 @@
+import numpy as np
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted

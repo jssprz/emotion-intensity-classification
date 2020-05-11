@@ -1,0 +1,213 @@
+from keras.layers import Activation, Dense, Dropout, Embedding, Flatten, Input, Convolution1D, MaxPooling1D, GlobalMaxPooling1D
+import numpy as np
+import math
+from nltk import tokenize as tokenize_nltk
+from string import punctuation
+from gensim.parsing.preprocessing import STOPWORDS
+from nltk import tokenize as tokenize_nltk
+from keras.preprocessing.sequence import pad_sequences
+from gensim.models.keyedvectors import KeyedVectors
+from keras.utils import np_utils
+from string import punctuation
+from gensim.parsing.preprocessing import STOPWORDS
+from nltk import tokenize as tokenize_nltk
+from keras.preprocessing.sequence import pad_sequences
+#os.environ['KERAS_BACKEND']='theano'
+from keras.layers import Embedding
+from keras.layers import Dense, Input, Flatten
+from keras.layers import Conv1D, MaxPooling1D, Embedding, Dropout, LSTM, GRU, Bidirectional
+from keras.models import Model,Sequential
+
+from keras import backend as K
+from keras.engine.topology import Layer, InputSpec
+from keras import initializers, optimizers
+
+class lstm_class():
+    def __init__(self, vocab = None):
+        self.vocab = vocab
+        model_variation = 'LSTM'
+        print('Model variation is %s' % model_variation)
+        model = Sequential()
+        print('variables')
+        embedding_dim = 300
+        sequence_length= 20
+        print(embedding_dim)
+        print(sequence_length)
+        model.add(Embedding(len(vocab)+1, embedding_dim, input_length=sequence_length, trainable=True))
+        model.add(Dropout(0.25))#, input_shape=(sequence_length, embedding_dim)))
+        model.add(Bidirectional(LSTM(embedding_dim)))#, input_shape=(sequence_length, embedding_dim)))
+        model.add(Dropout(0.5))
+        model.add(Dense(3))
+        model.add(Activation('softmax'))
+        model.compile(loss='categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
+        print (model.summary())
+        model.layers[0].set_weights([self.get_embedding_weights()])
+        self.classifier = model
+ 
+    def get_embedding_weights(self):
+        word2vec_model = KeyedVectors.load_word2vec_format('/content/fasttext-sbwc.vec', limit=50000)
+        embedding = np.zeros((len(self.vocab) + 1, 300))
+        n = 0
+        for k, v in self.vocab.items():
+            try:
+                embedding[v] = word2vec_model[k]
+            except:
+                n += 1
+                pass
+        #pdb.set_trace()
+        return embedding
+    def get_embedding_weights2(self):
+      word2idx = {word: ii for ii, word in enumerate(self.vocab, 1)}
+      path = '/gdrive/My Drive/Workspace/vectors/glove.txt'
+      embedding_dim = 200
+      with open(path, 'r') as f:
+          embeddings = np.zeros((len(word2idx) + 1, embedding_dim))
+          c = 0 
+          for line in f.readlines():
+              values = line.split()
+              word = values[0]
+              index = word2idx.get(word)
+              if index:
+                  try:
+                      vector = np.array(values[1:], dtype='float32')
+                      embeddings[index] = vector
+                  except:
+                      pass
+              c += 1
+      return torch.from_numpy(embeddings).float()
+
+    def fit(self, X, y):
+        self.classifier.fit(X, y, epochs = 10)
+        return self
+        
+    def predict_proba(self, X):
+        print('predict_proba')
+        return self.classifier.predict_proba(X)
+
+    
+def shuffle_weights(model):
+    weights = model.get_weights()
+    weights = [np.random.permutation(w.flat).reshape(w.shape) for w in weights]
+    model.set_weights(weights)
+
+
+def gen_sequence(tweets, vocab):
+    X = []
+    for tweet in tweets:
+      text = tokenize_nltk.casual.TweetTokenizer(strip_handles=True, reduce_len=True).tokenize(tweet.lower())
+      text = ' '.join([c for c in text if c not in punctuation])
+      words = text.split()
+      words = [word for word in words if word not in STOPWORDS]
+
+      seq, _emb = [], []
+      for word in words:
+          seq.append(vocab.get(word, vocab['UNK']))
+      X.append(seq)
+    return X
+
+def glove_tokenize(text):
+    # text = tokenizer_g(text)
+    text = ''.join([c for c in text if c not in punctuation])
+    words = text.split()
+    words = [word for word in words if word not in STOPWORDS]
+    return words
+    
+def gen_data(tweets_list, word2vec_model):
+    X, y = [], []
+    word_embed_size = 300
+    for tweet in tweets_list:
+        words = glove_tokenize(tweet)
+        emb = np.zeros(word_embed_size)
+        for word in words:
+            try:
+                emb += word2vec_model[word]
+            except:
+                pass
+        emb /= len(words)
+        X.append(emb)
+        # y.append(y_map[tweet['label']])
+    X = np.array(X)
+    # y = np.array(y)
+    return X
+
+
+def gen_vocab(tweets):
+    # Processing
+    vocab, reverse_vocab = {}, {}
+    vocab_index = 1
+    for tweet in tweets:
+#             text = TOKENIZER(tweet)
+        text = ''.join([c for c in tweet if c not in punctuation])
+        words = text.split()
+        words = [word for word in words if word not in STOPWORDS]
+        
+        for word in words:
+            if word not in vocab:
+                vocab[word] = vocab_index
+                reverse_vocab[vocab_index] = word       # generate reverse vocab as well
+                vocab_index += 1
+    vocab['UNK'] = len(vocab) + 1
+    reverse_vocab[len(vocab)] = 'UNK'
+    print('ok')
+    return vocab
+def save_object(obj, filename):
+    with open(filename, 'wb') as fp:
+        pickle.dump(obj, fp)
+
+def load_object(filename):
+    with open(filename, 'rb') as fp:
+        obj = pickle.load(fp)
+    return obj
+import torch
+
+def load_embeddings(vocab, path):
+    print("Loading embeddings ...")
+    word2idx = {word: ii for ii, word in enumerate(vocab, 1)}
+    embedding_dim = 300
+    # Load Skipgram or CBOW model
+    model = KeyedVectors.load_word2vec_format(path, limit=50000)
+
+    # model=ft.load_fasttext_format(path)
+
+    embeddings = np.zeros((len(word2idx) + 1, embedding_dim))
+    c = 0 
+    for k, v in vocab.items():
+        # print(k,v)
+        # print(model[k])
+        try:
+            embeddings[v] = model[k]
+        except:
+            pass
+    return torch.from_numpy(pembeddings).float(), embedding_dim
+
+def create_model( wordEmb, vocab):
+    word2vec_model1 = wordEmb.reshape((wordEmb.shape[0], wordEmb.shape[1]))
+    word2vec_model = {}
+    for k,v in vocab.items():
+        word2vec_model[k] = word2vec_model1[int(v)]
+    del word2vec_model1
+    return word2vec_model 
+def train_embeddings(X_train, y_train, sentence_len, embedding_dim, batch_size,epochs, vocab):
+
+  lstm = lstm_model(sentence_len, embedding_dim,vocab)
+  shuffle_weights(lstm)
+  y_train = np.array(y_train)
+  X_train = np.array(X_train)
+  y_train1 = y_train.reshape((len(y_train), 1))
+  y = np_utils.to_categorical(y_train1, num_classes=3)
+
+  # X_temp = np.hstack(X_train, y)
+  print(X_train.shape)
+  for epoch in range(10):
+      # for X_batch in batch_gen(X_temp, batch_size):
+      #     x = X_batch[:, :sentence_len]
+      #     y_temp = X_batch[:, sentence_len]
+      #     print(y_temp.shape)
+    print(epoch)
+    loss, acc = lstm.train_on_batch(X_train, y, class_weight=None)
+    print(loss, acc)
+    
+  wordEmb = lstm.layers[0].get_weights()[0]
+  
+  word2vec_model = create_model(wordEmb,vocab)
+  return word2vec_model

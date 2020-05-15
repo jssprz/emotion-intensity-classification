@@ -7,18 +7,18 @@ from sklearn.utils.multiclass import unique_labels
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
-from train_embeddings import *
+# from train_embeddings import *
 
 class FearTweetClassifier(BaseEstimator, ClassifierMixin):
-  def __init__(self,vocab=None, demo_param='demo'):
-    self.demo_param = demo_param
+  def __init__(self, vocab=None):
     # self.classifier = MultinomialNB()
     self.classifier = LogisticRegression(solver='lbfgs', multi_class='ovr', max_iter = 1000)
     # self.classifier = RandomForestClassifier()
     # self.classifier = lstm_class(vocab)
+
   def fit(self, X, y):
     # Check that X and y have correct shape
-    # X, y = check_X_y(X, y, accept_sparse=True)
+    X, y = check_X_y(X, y, accept_sparse=True)
     # Store the classes seen during fit
     self.classes_ = unique_labels(y)
 

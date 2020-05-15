@@ -1,12 +1,23 @@
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from gensim.models.keyedvectors import KeyedVectors
+import nltk
+nltk.download('punkt')
+from nltk.tokenize import word_tokenize
 
 class WordEmbeddingTransformer(BaseEstimator, TransformerMixin):
   def __init__(self, wordvectors_path, use_maximum=False):
     self.use_maximum = use_maximum
-    count = 100000
-    self.wordvectors = KeyedVectors.load_word2vec_format(wordvectors_path, limit=count)
+    if wordvectors_path.split('.')[-1] == 'vec': 
+      count = 100000
+      self.wordvectors = KeyedVectors.load_word2vec_format(wordvectors_path, limit=count)
+    elif wordvectors_path.split('.')[-1] == 'txt':
+      self.wordvectors = {}
+      with open(wordvectors_path) as f:
+        for line in f:
+          s = line.strip().split(' ')
+          if len(s) == 201:
+            self.wordvectors[s[0]] = np.array(s[1:], dtype=float)
 
   def get_relevant_chars(self, tweet):
     num_hashtags = tweet.count('#')

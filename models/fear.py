@@ -17,7 +17,8 @@ from nltk.tokenize import word_tokenize
 
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Masking, Embedding
-from keras.optimizers import Adam
+from tensorflow.keras.optimizers.schedules import ExponentialDecay
+from tensorflow.keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import np_utils, to_categorical
 
@@ -93,7 +94,7 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     X_ = np.concatenate(X_, axis=0)
     return X_
   
-  def fit(self, X_train, y_train, X_valid=None, y_valid=None, epochs=150, lr=0.0001):
+  def fit(self, X_train, y_train, X_valid=None, y_valid=None, epochs=200, lr=0.0001, batch_size=16):
     # Check that X and y have correct shape
     # X, y = check_X_y(X, y)
     # Store the classes seen during fit
@@ -117,8 +118,15 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     # Output layer
     self.model.add(Dense(3, activation='softmax'))
 
+    # scheduler
+    lr_schedule = ExponentialDecay(
+    initial_learning_rate=lr,
+    decay_steps=8000,
+    decay_rate=0.9,
+    staircase=True)
+
     # optimizer
-    opt = Adam(learning_rate=lr)
+    opt = Adam(learning_rate=lr_schedule)
 
     # Compile the model
     self.model.compile(
@@ -140,12 +148,12 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
       X_valid_ = self.get_embeddings(X_valid)
 
       self.history_ = self.model.fit(X_train_,  dummy_y_train, 
-                      batch_size=16, epochs=epochs,
+                      batch_size=batch_size, epochs=epochs,
                       callbacks=self.callbacks,
                       validation_data=(X_valid_, dummy_y_valid))
     else:
       self.history_ = self.model.fit(X_train_,  dummy_y_train, 
-                      batch_size=16, epochs=epochs,
+                      batch_size=batch_size, epochs=epochs,
                       callbacks=self.callbacks)
     return self
 

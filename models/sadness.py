@@ -19,6 +19,7 @@ from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Masking, Embedding
 from tensorflow.keras.optimizers.schedules import ExponentialDecay
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.metrics import AUC
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import np_utils, to_categorical
 
@@ -66,12 +67,12 @@ class SadnessTweetClassifier(BaseEstimator, ClassifierMixin):
 
 
 class SadnessTweetDeepClassifier(BaseEstimator, ClassifierMixin):
-  def __init__(self, wordvectors, max_len=15):
+  def __init__(self, wordvectors, max_len=15, patience=10):
     self.wordvectors = wordvectors
     self.max_len = max_len
 
     # Create callbacks
-    self.callbacks = [EarlyStopping(monitor='val_loss', patience=5)]
+    self.callbacks = [EarlyStopping(monitor='val_loss', patience=patience)]
 
   def get_embeddings(self, X):
     X_ = []
@@ -106,11 +107,11 @@ class SadnessTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     self.model = Sequential()
 
     # Recurrent layer
-    self.model.add(LSTM(64, return_sequences=False, 
+    self.model.add(LSTM(512, return_sequences=False, 
             dropout=0.1, recurrent_dropout=0.1))
 
     # Fully connected layer
-    self.model.add(Dense(64, activation='relu'))
+    self.model.add(Dense(256, activation='relu'))
 
     # Dropout for regularization
     self.model.add(Dropout(0.5))
@@ -130,7 +131,7 @@ class SadnessTweetDeepClassifier(BaseEstimator, ClassifierMixin):
 
     # Compile the model
     self.model.compile(
-        optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+        optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy', AUC()])
 
     # encode class values as integers
     label_encoder = LabelEncoder()

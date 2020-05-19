@@ -20,6 +20,7 @@ from keras.layers import LSTM, Dense, Dropout, Masking, Embedding
 from tensorflow.keras.optimizers.schedules import ExponentialDecay
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
+from keras.layers import Bidirectional
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.utils import np_utils, to_categorical
 
@@ -99,7 +100,7 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     # Check that X and y have correct shape
     # X, y = check_X_y(X, y)
     # Store the classes seen during fit
-    self.classes_ = unique_labels(y_train)
+    # self.classes_ = unique_labels(y_train)
 
     self.X_ = X_train
     self.y_ = y_train
@@ -107,11 +108,11 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     self.model = Sequential()
 
     # Recurrent layer
-    self.model.add(LSTM(512, return_sequences=False, 
-            dropout=0.1, recurrent_dropout=0.1))
+    self.model.add(Bidirectional(LSTM(128, return_sequences=False, 
+            dropout=0.1, recurrent_dropout=0.1)))
 
     # Fully connected layer
-    self.model.add(Dense(256, activation='relu'))
+    self.model.add(Dense(128, activation='relu'))
 
     # Dropout for regularization
     self.model.add(Dropout(0.5))
@@ -136,6 +137,7 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     # encode class values as integers
     label_encoder = LabelEncoder()
     label_encoder.fit(y_train)
+    self.classes_ = label_encoder.classes_
     encoded_y_train = label_encoder.transform(y_train)
 
     # convert integers to dummy variables (i.e. one hot encoded)
@@ -176,3 +178,61 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     X = check_array(X, accept_sparse=True)
 
     return self.model.eval(X)
+
+
+class FearTweetNRCClassifier(BaseEstimator, ClassifierMixin):
+  def __init__(self, nrc_scores):
+    self.nrc_scores = nrc_scores
+
+  def fit(self, X, y):
+    # Check that X and y have correct shape
+    # X, y = check_X_y(X, y)
+    # Store the classes seen during fit
+    self.classes_ = unique_labels(y)
+
+    self.X_ = X
+    self.y_ = y
+
+    return self
+
+  def predict_proba(self, X):
+    # Check is fit had been called
+    check_is_fitted(self)
+    # Input validation
+    # X = check_array(X, accept_sparse=True)
+
+    probs = []
+    for tweet in X:
+      low_s, low_c = 0, 1e-8
+      medium_s, medium_c = 0, 1e-8
+      high_s, high_c = 0, 1e-8
+      for i, t in enumerate(word_tokenize(tweet)):
+        try:
+          score = self.nrc_scores[t]
+        except:
+          pass
+        else:
+          if score < 0.3333:
+            low_s += score
+            low_c += 1
+          elif score < 0.6666:
+            medium_s += score - 0.3333
+            medium_c += 1
+          else:
+            high_s += score - 0.6666
+            high_c += 1
+      sum_s = low_s + medium_s + high_s
+      if sum_s:
+        probs.append([low_s/sum_s, medium_s/sum_s, high_s/sum_s])
+      else:
+        probs.append([0.3333, 0.3333, 0.3333])
+    return np.array(probs)
+
+  def predict(self, X):
+    # Check is fit had been called
+    check_is_fitted(self)
+    # Input validation
+    # X = check_array(X, accept_sparse=True)
+    
+    probs = self.predict_proba(X)
+    return np.argmax(probs, axis=1)

@@ -73,7 +73,7 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     self.max_len = max_len
 
     # Create callbacks
-    self.callbacks = [EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)]
+    self.callbacks = [EarlyStopping(monitor='val_loss', mode='max', patience=patience, restore_best_weights=True)]
 
   def get_embeddings(self, X):
     X_ = []
@@ -123,7 +123,7 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     # scheduler
     lr_schedule = ExponentialDecay(
     initial_learning_rate=lr,
-    decay_steps=8000,
+    decay_steps=600,
     decay_rate=0.9,
     staircase=True)
 
@@ -132,7 +132,7 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
 
     # Compile the model
     self.model.compile(
-        optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy', AUC()])
+        optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy', AUC(name='auc')])
 
     # encode class values as integers
     label_encoder = LabelEncoder()

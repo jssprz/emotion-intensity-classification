@@ -28,7 +28,7 @@ from keras.utils import np_utils, to_categorical
 class SadnessTweetClassifier(BaseEstimator, ClassifierMixin):
   def __init__(self, vocab=None):
     # self.classifier = MultinomialNB()
-    self.classifier = LogisticRegression(solver='lbfgs', multi_class='ovr', max_iter = 1000)
+    self.classifier = LogisticRegression(solver='lbfgs', multi_class='ovr', max_iter = 10000)
     # self.classifier = RandomForestClassifier()
     # self.classifier = lstm_class(vocab)
 

@@ -73,7 +73,7 @@ class AngerTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     self.max_len = max_len
 
     # Create callbacks
-    self.callbacks = [EarlyStopping(monitor='val_loss', patience=patience)]
+    self.callbacks = [EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)]
 
   def get_embeddings(self, X):
     X_ = []

@@ -1,11 +1,10 @@
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from gensim.models.keyedvectors import KeyedVectors
+
 import nltk
 nltk.download('punkt')
 from nltk.tokenize import word_tokenize
-from keras.models import Sequential
-from keras.layers import LSTM, Dense, Dropout, Masking, Embedding
 
 class WordEmbeddingTransformer(BaseEstimator, TransformerMixin):
   def __init__(self, wordvectors, aggregation='None'):

@@ -73,7 +73,7 @@ class FearTweetDeepClassifier(BaseEstimator, ClassifierMixin):
     self.max_len = max_len
 
     # Create callbacks
-    self.callbacks = [EarlyStopping(monitor='val_loss', mode='max', patience=patience, restore_best_weights=True)]
+    self.callbacks = [EarlyStopping(monitor='val_loss', mode='min', patience=patience, restore_best_weights=True)]
 
   def get_embeddings(self, X):
     X_ = []
